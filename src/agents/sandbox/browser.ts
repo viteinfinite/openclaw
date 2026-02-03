@@ -41,6 +41,24 @@ async function waitForSandboxCdp(params: { cdpPort: number; timeoutMs: number })
   return false;
 }
 
+async function readDockerPortWithRetry(
+  containerName: string,
+  port: number,
+  timeoutMs: number,
+): Promise<number> {
+  const deadline = Date.now() + Math.max(0, timeoutMs);
+  while (Date.now() < deadline) {
+    const mapped = await readDockerPort(containerName, port);
+    if (mapped !== null) {
+      return mapped;
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(
+    `Failed to resolve port ${port} mapping for ${containerName} within ${timeoutMs}ms.`,
+  );
+}
+
 function buildSandboxBrowserResolvedConfig(params: {
   controlPort: number;
   cdpPort: number;
@@ -138,14 +156,11 @@ export async function ensureSandboxBrowser(params: {
     await execDocker(["start", containerName]);
   }
 
-  const mappedCdp = await readDockerPort(containerName, params.cfg.browser.cdpPort);
-  if (!mappedCdp) {
-    throw new Error(`Failed to resolve CDP port mapping for ${containerName}.`);
-  }
+  const mappedCdp = await readDockerPortWithRetry(containerName, params.cfg.browser.cdpPort, 5000);
 
   const mappedNoVnc =
     params.cfg.browser.enableNoVnc && !params.cfg.browser.headless
-      ? await readDockerPort(containerName, params.cfg.browser.noVncPort)
+      ? await readDockerPortWithRetry(containerName, params.cfg.browser.noVncPort, 5000)
       : null;
 
   const existing = BROWSER_BRIDGES.get(params.scopeKey);
