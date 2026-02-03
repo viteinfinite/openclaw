@@ -17,21 +17,53 @@ export type BashSandboxConfig = {
   env?: Record<string, string>;
 };
 
+// Common API key environment variable patterns that should be passed to sandbox
+const SANDBOX_ENV_PATTERNS = [
+  /^GEMINI_API_KEY$/,
+  /^ANTHROPIC_API_KEY$/,
+  /^OPENAI_API_KEY$/,
+  /^OPENAI_ORGANIZATION$/,
+  /^BIRD_AUTH_TOKEN$/,
+  /^BIRD_CT0$/,
+  /^AZURE_OPENAI_API_KEY$/,
+  /^HUGGING_FACE_TOKEN$/,
+  /^REPLICATE_API_TOKEN$/,
+  /^COHERE_API_KEY$/,
+  /^GOOGLE_API_KEY$/,
+  /^GOOGLE_CLOUD_PROJECT$/,
+];
+
 export function buildSandboxEnv(params: {
   defaultPath: string;
   paramsEnv?: Record<string, string>;
   sandboxEnv?: Record<string, string>;
   containerWorkdir: string;
+  processEnv?: Record<string, string>;
 }) {
   const env: Record<string, string> = {
     PATH: params.defaultPath,
     HOME: params.containerWorkdir,
   };
+  // Add env vars from docker config
   for (const [key, value] of Object.entries(params.sandboxEnv ?? {})) {
     env[key] = value;
   }
+  // Add env vars from tool call parameters
   for (const [key, value] of Object.entries(params.paramsEnv ?? {})) {
     env[key] = value;
+  }
+  // Add skill-related env vars from process.env (API keys, etc.)
+  for (const [key, value] of Object.entries(params.processEnv ?? {})) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    // Include if key matches known API key patterns
+    for (const pattern of SANDBOX_ENV_PATTERNS) {
+      if (pattern.test(key)) {
+        env[key] = value;
+        break;
+      }
+    }
   }
   return env;
 }
