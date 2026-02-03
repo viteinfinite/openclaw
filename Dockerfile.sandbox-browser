@@ -14,14 +14,22 @@ RUN apt-get update \
     jq \
     novnc \
     python3 \
+    python3-pip \
     socat \
     websockify \
     x11vnc \
     xvfb \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && pip3 install --break-system-packages uv
+
+# Create node user (UID 1000) for container execution
+RUN groupadd -g 1000 node && \
+    useradd -u 1000 -g node -s /bin/sh -m node
 
 COPY scripts/sandbox-browser-entrypoint.sh /usr/local/bin/openclaw-sandbox-browser
 RUN chmod +x /usr/local/bin/openclaw-sandbox-browser
+
+USER node
 
 EXPOSE 9222 5900 6080
 
