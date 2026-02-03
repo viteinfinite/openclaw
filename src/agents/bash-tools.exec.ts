@@ -308,6 +308,7 @@ export function createExecTool(
             paramsEnv: params.env,
             sandboxEnv: sandbox.env,
             containerWorkdir: containerWorkdir ?? sandbox.containerWorkdir,
+            processEnv: baseEnv,
           })
         : mergedEnv;
 
