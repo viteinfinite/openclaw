@@ -61,6 +61,8 @@ import { resolveAgentRunContext } from "./agent/run-context.js";
 import { updateSessionStoreAfterAgentRun } from "./agent/session-store.js";
 import { resolveSession } from "./agent/session.js";
 
+const SKILLS_PROMPT_VERSION = 1;
+
 export async function agentCommand(
   opts: AgentCommandOpts,
   runtime: RuntimeEnv = defaultRuntime,
@@ -186,8 +188,9 @@ export async function agentCommand(
       });
     }
 
-    const needsSkillsSnapshot = isNewSession || !sessionEntry?.skillsSnapshot;
-    const skillsSnapshotVersion = getSkillsSnapshotVersion(workspaceDir);
+    const skillsSnapshotVersion = getSkillsSnapshotVersion(workspaceDir) + SKILLS_PROMPT_VERSION;
+    const snapshotStale = sessionEntry?.skillsSnapshot?.version !== skillsSnapshotVersion;
+    const needsSkillsSnapshot = isNewSession || !sessionEntry?.skillsSnapshot || snapshotStale;
     const skillFilter = resolveAgentSkillsFilter(cfg, sessionAgentId);
     const skillsSnapshot = needsSkillsSnapshot
       ? buildWorkspaceSkillSnapshot(workspaceDir, {
