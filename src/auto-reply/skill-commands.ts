@@ -6,6 +6,10 @@ import { getRemoteSkillEligibility } from "../infra/skills-remote.js";
 import { buildWorkspaceSkillCommandSpecs, type SkillCommandSpec } from "../agents/skills.js";
 import { listChatCommands } from "./commands-registry.js";
 
+const SKILL_COMMAND_ALIASES: Record<string, string> = {
+  "x-t-backoffice": "x-to-backoffice",
+};
+
 function resolveReservedCommandNames(): Set<string> {
   const reserved = new Set<string>();
   for (const command of listChatCommands()) {
@@ -68,6 +72,11 @@ function normalizeSkillCommandLookup(value: string): string {
     .replace(/[\s_]+/g, "-");
 }
 
+function resolveSkillCommandAlias(rawName: string): string | undefined {
+  const normalized = normalizeSkillCommandLookup(rawName);
+  return SKILL_COMMAND_ALIASES[normalized];
+}
+
 function findSkillCommand(
   skillCommands: SkillCommandSpec[],
   rawName: string,
@@ -78,7 +87,7 @@ function findSkillCommand(
   }
   const lowered = trimmed.toLowerCase();
   const normalized = normalizeSkillCommandLookup(trimmed);
-  return skillCommands.find((entry) => {
+  const directMatch = skillCommands.find((entry) => {
     if (entry.name.toLowerCase() === lowered) {
       return true;
     }
@@ -88,6 +97,28 @@ function findSkillCommand(
     return (
       normalizeSkillCommandLookup(entry.name) === normalized ||
       normalizeSkillCommandLookup(entry.skillName) === normalized
+    );
+  });
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const alias = resolveSkillCommandAlias(rawName);
+  if (!alias) {
+    return undefined;
+  }
+  const aliasLowered = alias.toLowerCase();
+  const aliasNormalized = normalizeSkillCommandLookup(alias);
+  return skillCommands.find((entry) => {
+    if (entry.name.toLowerCase() === aliasLowered) {
+      return true;
+    }
+    if (entry.skillName.toLowerCase() === aliasLowered) {
+      return true;
+    }
+    return (
+      normalizeSkillCommandLookup(entry.name) === aliasNormalized ||
+      normalizeSkillCommandLookup(entry.skillName) === aliasNormalized
     );
   });
 }

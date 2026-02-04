@@ -60,6 +60,8 @@ import { updateSessionStoreAfterAgentRun } from "./agent/session-store.js";
 import type { AgentCommandOpts } from "./agent/types.js";
 import { normalizeAgentId } from "../routing/session-key.js";
 
+const SKILLS_PROMPT_VERSION = 1;
+
 export async function agentCommand(
   opts: AgentCommandOpts,
   runtime: RuntimeEnv = defaultRuntime,
@@ -185,8 +187,9 @@ export async function agentCommand(
       });
     }
 
-    const needsSkillsSnapshot = isNewSession || !sessionEntry?.skillsSnapshot;
-    const skillsSnapshotVersion = getSkillsSnapshotVersion(workspaceDir);
+    const skillsSnapshotVersion = getSkillsSnapshotVersion(workspaceDir) + SKILLS_PROMPT_VERSION;
+    const snapshotStale = sessionEntry?.skillsSnapshot?.version !== skillsSnapshotVersion;
+    const needsSkillsSnapshot = isNewSession || !sessionEntry?.skillsSnapshot || snapshotStale;
     const skillsSnapshot = needsSkillsSnapshot
       ? buildWorkspaceSkillSnapshot(workspaceDir, {
           config: cfg,

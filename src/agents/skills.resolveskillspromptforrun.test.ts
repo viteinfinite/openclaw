@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveSkillsPromptForRun } from "./skills.js";
+import type { SkillEntry } from "./skills/types.js";
 
 async function _writeSkill(params: {
   dir: string;
@@ -38,8 +39,8 @@ describe("resolveSkillsPromptForRun", () => {
       skill: {
         name: "demo-skill",
         description: "Demo",
-        filePath: "/app/skills/demo-skill/SKILL.md",
-        baseDir: "/app/skills/demo-skill",
+        filePath: "/tmp/openclaw/skills/demo-skill/SKILL.md",
+        baseDir: "/tmp/openclaw/skills/demo-skill",
         source: "openclaw-bundled",
       },
       frontmatter: {},
@@ -49,6 +50,27 @@ describe("resolveSkillsPromptForRun", () => {
       workspaceDir: "/tmp/openclaw",
     });
     expect(prompt).toContain("<available_skills>");
-    expect(prompt).toContain("/app/skills/demo-skill/SKILL.md");
+    expect(prompt).toContain("/tmp/openclaw/skills/demo-skill/SKILL.md");
+  });
+
+  it("prefers entries when explicitly requested", () => {
+    const entry: SkillEntry = {
+      skill: {
+        name: "demo-skill",
+        description: "Demo",
+        filePath: "/tmp/openclaw/skills/demo-skill/SKILL.md",
+        baseDir: "/tmp/openclaw/skills/demo-skill",
+        source: "openclaw-bundled",
+      },
+      frontmatter: {},
+    };
+    const prompt = resolveSkillsPromptForRun({
+      skillsSnapshot: { prompt: "SNAPSHOT", skills: [] },
+      entries: [entry],
+      workspaceDir: "/tmp/openclaw",
+      preferEntries: true,
+    });
+    expect(prompt).toContain("<available_skills>");
+    expect(prompt).toContain("/tmp/openclaw/skills/demo-skill/SKILL.md");
   });
 });

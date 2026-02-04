@@ -23,8 +23,9 @@ const SANDBOX_ENV_PATTERNS = [
   /^ANTHROPIC_API_KEY$/,
   /^OPENAI_API_KEY$/,
   /^OPENAI_ORGANIZATION$/,
-  /^BIRD_AUTH_TOKEN$/,
-  /^BIRD_CT0$/,
+  /^BIRD_/,
+  /^AUTH_TOKEN$/,
+  /^CT0$/,
   /^AZURE_OPENAI_API_KEY$/,
   /^HUGGING_FACE_TOKEN$/,
   /^REPLICATE_API_TOKEN$/,
@@ -64,6 +65,12 @@ export function buildSandboxEnv(params: {
         break;
       }
     }
+  }
+  if (!env.AUTH_TOKEN && env.BIRD_AUTH_TOKEN) {
+    env.AUTH_TOKEN = env.BIRD_AUTH_TOKEN;
+  }
+  if (!env.CT0 && env.BIRD_CT0) {
+    env.CT0 = env.BIRD_CT0;
   }
   return env;
 }

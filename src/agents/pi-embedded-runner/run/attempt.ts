@@ -168,7 +168,9 @@ export async function runEmbeddedAttempt(
   let restoreSkillEnv: (() => void) | undefined;
   process.chdir(effectiveWorkspace);
   try {
-    const shouldLoadSkillEntries = !params.skillsSnapshot || !params.skillsSnapshot.resolvedSkills;
+    const preferWorkspaceSkills = Boolean(sandbox?.enabled);
+    const shouldLoadSkillEntries =
+      preferWorkspaceSkills || !params.skillsSnapshot || !params.skillsSnapshot.resolvedSkills;
     const skillEntries = shouldLoadSkillEntries
       ? loadWorkspaceSkillEntries(effectiveWorkspace)
       : [];
@@ -187,6 +189,7 @@ export async function runEmbeddedAttempt(
       entries: shouldLoadSkillEntries ? skillEntries : undefined,
       config: params.config,
       workspaceDir: effectiveWorkspace,
+      preferEntries: preferWorkspaceSkills,
     });
 
     const sessionLabel = params.sessionKey ?? params.sessionId;

@@ -30,6 +30,40 @@ import type {
 const fsp = fs.promises;
 const skillsLogger = createSubsystemLogger("skills");
 const skillCommandDebugOnce = new Set<string>();
+const WORKSPACE_SKILLS_CACHE_DIR = path.join(".openclaw", "skills-bundled");
+
+function isPathWithin(root: string, target: string) {
+  const resolvedRoot = path.resolve(root);
+  const resolvedTarget = path.resolve(target);
+  const relative = path.relative(resolvedRoot, resolvedTarget);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function resolveSkillForPrompt(entry: SkillEntry, workspaceDir: string): Skill {
+  if (isPathWithin(workspaceDir, entry.skill.filePath)) {
+    return entry.skill;
+  }
+
+  const targetRoot = path.join(workspaceDir, WORKSPACE_SKILLS_CACHE_DIR);
+  const targetDir = path.join(targetRoot, entry.skill.name);
+  const targetFile = path.join(targetDir, path.basename(entry.skill.filePath));
+  if (!fs.existsSync(targetFile)) {
+    try {
+      fs.mkdirSync(targetRoot, { recursive: true });
+      fs.cpSync(entry.skill.baseDir, targetDir, { recursive: true, force: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : JSON.stringify(error);
+      skillsLogger.warn(`Failed to cache skill "${entry.skill.name}" for prompt: ${message}`);
+      return entry.skill;
+    }
+  }
+
+  return {
+    ...entry.skill,
+    baseDir: targetDir,
+    filePath: targetFile,
+  };
+}
 
 function debugSkillCommandOnce(
   messageKey: string,
@@ -213,7 +247,7 @@ export function buildWorkspaceSkillSnapshot(
   const promptEntries = eligible.filter(
     (entry) => entry.invocation?.disableModelInvocation !== true,
   );
-  const resolvedSkills = promptEntries.map((entry) => entry.skill);
+  const resolvedSkills = promptEntries.map((entry) => resolveSkillForPrompt(entry, workspaceDir));
   const remoteNote = opts?.eligibility?.remote?.note?.trim();
   const prompt = [remoteNote, formatSkillsForPrompt(resolvedSkills)].filter(Boolean).join("\n");
   return {
@@ -250,7 +284,10 @@ export function buildWorkspaceSkillsPrompt(
     (entry) => entry.invocation?.disableModelInvocation !== true,
   );
   const remoteNote = opts?.eligibility?.remote?.note?.trim();
-  return [remoteNote, formatSkillsForPrompt(promptEntries.map((entry) => entry.skill))]
+  return [
+    remoteNote,
+    formatSkillsForPrompt(promptEntries.map((entry) => resolveSkillForPrompt(entry, workspaceDir))),
+  ]
     .filter(Boolean)
     .join("\n");
 }
@@ -260,9 +297,10 @@ export function resolveSkillsPromptForRun(params: {
   entries?: SkillEntry[];
   config?: OpenClawConfig;
   workspaceDir: string;
+  preferEntries?: boolean;
 }): string {
   const snapshotPrompt = params.skillsSnapshot?.prompt?.trim();
-  if (snapshotPrompt) {
+  if (snapshotPrompt && !params.preferEntries) {
     return snapshotPrompt;
   }
   if (params.entries && params.entries.length > 0) {

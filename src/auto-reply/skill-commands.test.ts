@@ -55,6 +55,16 @@ describe("resolveSkillCommandInvocation", () => {
     });
     expect(invocation).toBeNull();
   });
+
+  it("matches known command aliases", () => {
+    const invocation = resolveSkillCommandInvocation({
+      commandBodyNormalized: "/x-t-backoffice https://example.com",
+      skillCommands: [
+        { name: "x_to_backoffice", skillName: "x-to-backoffice", description: "Demo" },
+      ],
+    });
+    expect(invocation?.command.skillName).toBe("x-to-backoffice");
+  });
 });
 
 describe("listSkillCommandsForAgents", () => {
