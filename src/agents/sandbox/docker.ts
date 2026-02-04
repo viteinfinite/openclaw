@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import path from "node:path";
 
 type ExecDockerRawOptions = {
   allowFailure?: boolean;
@@ -103,7 +104,6 @@ export function execDockerRaw(
     }
   });
 }
-
 import type { SandboxConfig, SandboxDockerConfig, SandboxWorkspaceAccess } from "./types.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { defaultRuntime } from "../../runtime.js";
@@ -341,6 +341,22 @@ async function createSandboxContainer(params: {
   const mainMountSuffix =
     params.workspaceAccess === "ro" && workspaceDir === params.agentWorkspaceDir ? ":ro" : "";
   args.push("-v", `${workspaceDir}:${cfg.workdir}${mainMountSuffix}`);
+  // Mount individual readonly files if configured (for immutable SOUL.md, TOOLS.md, etc.)
+  if (cfg.readonlyFilesDir?.trim()) {
+    const readonlyDir = cfg.readonlyFilesDir.trim();
+    const protectedFiles = [
+      "SOUL.md",
+      "TOOLS.md",
+      "AGENTS.md",
+      "IDENTITY.md",
+      "USER.md",
+      "HEARTBEAT.md",
+    ];
+    for (const file of protectedFiles) {
+      const srcPath = path.join(readonlyDir, file);
+      args.push("-v", `${srcPath}:${path.join(cfg.workdir, file)}:ro`);
+    }
+  }
   if (params.workspaceAccess !== "none" && workspaceDir !== params.agentWorkspaceDir) {
     const agentMountSuffix = params.workspaceAccess === "ro" ? ":ro" : "";
     args.push(

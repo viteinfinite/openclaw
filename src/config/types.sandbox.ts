@@ -42,6 +42,13 @@ export type SandboxDockerSettings = {
   extraHosts?: string[];
   /** Additional bind mounts (host:container:mode format, e.g. ["/host/path:/container/path:rw"]). */
   binds?: string[];
+  /**
+   * Path to a directory on the host containing readonly files (SOUL.md, TOOLS.md, etc.)
+   * that will be bind-mounted individually into the sandbox workspace as readonly.
+   * Protected files: SOUL.md, TOOLS.md, AGENTS.md, IDENTITY.md, USER.md, HEARTBEAT.md.
+   * This prevents prompt injection from modifying these core files within a session.
+   */
+  readonlyFilesDir?: string;
 };
 
 export type SandboxBrowserSettings = {
