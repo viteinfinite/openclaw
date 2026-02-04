@@ -19,4 +19,10 @@ export type SandboxDockerConfig = {
   dns?: string[];
   extraHosts?: string[];
   binds?: string[];
+  /**
+   * Path to a directory on the host containing readonly files (SOUL.md, TOOLS.md, etc.)
+   * that will be bind-mounted individually into the sandbox workspace as readonly.
+   * Protected files: SOUL.md, TOOLS.md, AGENTS.md, IDENTITY.md, USER.md, HEARTBEAT.md
+   */
+  readonlyFilesDir?: string;
 };
