@@ -334,7 +334,7 @@ export async function ensureSandboxBrowser(params: {
       : undefined;
 
   return {
-    bridgeUrl: resolvedBridge.baseUrl,
+    bridgeUrl: resolvedBridge.sandboxBaseUrl,
     noVncUrl,
     containerName,
   };

@@ -18,6 +18,7 @@ export type BrowserBridge = {
   server: Server;
   port: number;
   baseUrl: string;
+  sandboxBaseUrl: string;
   state: BrowserServerState;
 };
 
@@ -28,10 +29,12 @@ export async function startBrowserBridgeServer(params: {
   authToken?: string;
   authPassword?: string;
   onEnsureAttachTarget?: (profile: ProfileContext["profile"]) => Promise<void>;
+  allowSandboxAccess?: boolean;
 }): Promise<BrowserBridge> {
   const host = params.host ?? "127.0.0.1";
-  if (!isLoopbackHost(host)) {
-    throw new Error(`bridge server must bind to loopback host (got ${host})`);
+  const allowSandboxAccess = params.allowSandboxAccess ?? false;
+  if (!isLoopbackHost(host) && host !== "0.0.0.0") {
+    throw new Error(`bridge server must bind to loopback host or 0.0.0.0 (got ${host})`);
   }
   const port = params.port ?? 0;
 
@@ -93,7 +96,11 @@ export async function startBrowserBridgeServer(params: {
   setBridgeAuthForPort(resolvedPort, { token: authToken, password: authPassword });
 
   const baseUrl = `http://${host}:${resolvedPort}`;
-  return { server, port: resolvedPort, baseUrl, state };
+  // For sandbox containers on macOS/Windows Docker Desktop, provide a URL using host.docker.internal
+  const sandboxBaseUrl = allowSandboxAccess
+    ? `http://host.docker.internal:${resolvedPort}`
+    : baseUrl;
+  return { server, port: resolvedPort, baseUrl, sandboxBaseUrl, state };
 }
 
 export async function stopBrowserBridgeServer(server: Server): Promise<void> {

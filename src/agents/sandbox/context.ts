@@ -118,7 +118,22 @@ export async function resolveSandboxContext(params: {
         }
         return browserAuth;
       })()
-    : undefined;
+    : cfg.browser.allowHostControl
+      ? await (async () => {
+          // Host browser control requested: set up auth for the gateway's browser control service
+          const cfgForAuth = params.config ?? loadConfig();
+          let browserAuth = resolveBrowserControlAuth(cfgForAuth);
+          try {
+            const ensured = await ensureBrowserControlAuth({ cfg: cfgForAuth });
+            browserAuth = ensured.auth;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : JSON.stringify(error);
+            defaultRuntime.error?.(`Sandbox host browser auth ensure failed: ${message}`);
+          }
+          return browserAuth;
+        })()
+      : undefined;
+
   const browser = await ensureSandboxBrowser({
     scopeKey,
     workspaceDir,
@@ -127,6 +142,27 @@ export async function resolveSandboxContext(params: {
     evaluateEnabled,
     bridgeAuth,
   });
+
+  // When sandbox browser is disabled but host control is allowed, provide a bridge URL
+  // that points to the gateway's browser control service (reachable via host.docker.internal)
+  let hostBrowserBridge: { bridgeUrl: string; containerName: string } | undefined = undefined;
+  if (!browser && cfg.browser.allowHostControl && bridgeAuth) {
+    // Start the gateway's browser control service with sandbox-accessible binding
+    const { startBrowserControlServiceWithSandboxAccess } =
+      await import("../../browser/control-service.js");
+    try {
+      const bridge = await startBrowserControlServiceWithSandboxAccess({ bridgeAuth });
+      if (bridge) {
+        hostBrowserBridge = {
+          bridgeUrl: bridge.sandboxBaseUrl,
+          containerName: "host-gateway",
+        };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : JSON.stringify(error);
+      defaultRuntime.error?.(`Failed to start sandbox-accessible browser bridge: ${message}`);
+    }
+  }
 
   const sandboxContext: SandboxContext = {
     enabled: true,
@@ -139,7 +175,7 @@ export async function resolveSandboxContext(params: {
     docker: cfg.docker,
     tools: cfg.tools,
     browserAllowHostControl: cfg.browser.allowHostControl,
-    browser: browser ?? undefined,
+    browser: browser ?? hostBrowserBridge,
   };
 
   sandboxContext.fsBridge = createSandboxFsBridge({ sandbox: sandboxContext });

@@ -1,5 +1,6 @@
 import { loadConfig } from "../config/config.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
+import { startBrowserBridgeServer } from "./bridge-server.js";
 import { resolveBrowserConfig, resolveProfile } from "./config.js";
 import { ensureBrowserControlAuth } from "./control-auth.js";
 import { ensureChromeExtensionRelayServer } from "./extension-relay.js";
@@ -99,5 +100,63 @@ export async function stopBrowserControlService(): Promise<void> {
     await mod.closePlaywrightBrowserConnection();
   } catch {
     // ignore
+  }
+}
+
+type BrowserBridgeAuth = {
+  token?: string;
+  password?: string;
+};
+
+let sandboxBridgeServer: Awaited<ReturnType<typeof startBrowserBridgeServer>> | null = null;
+
+export async function startBrowserControlServiceWithSandboxAccess(params: {
+  bridgeAuth: BrowserBridgeAuth;
+}): Promise<Awaited<ReturnType<typeof startBrowserBridgeServer>> | null> {
+  // If the main browser control service is already running, return early
+  if (state && state.server) {
+    // The service is already running; we'd need to know its port to construct the URL
+    // For now, return null and let the caller handle it
+    return null;
+  }
+
+  // Start the browser control service to initialize the state
+  const started = await startBrowserControlServiceFromConfig();
+  if (!started) {
+    return null;
+  }
+
+  // Now start a bridge server that binds to all interfaces for sandbox access
+  try {
+    const cfg = loadConfig();
+    const resolved = resolveBrowserConfig(cfg.browser, cfg);
+    sandboxBridgeServer = await startBrowserBridgeServer({
+      resolved,
+      host: "0.0.0.0",
+      port: 0,
+      authToken: params.bridgeAuth.token,
+      authPassword: params.bridgeAuth.password,
+      allowSandboxAccess: true,
+    });
+    logService.info(
+      `Sandbox-accessible browser bridge server started on port ${sandboxBridgeServer.port}`,
+    );
+    return sandboxBridgeServer;
+  } catch (err) {
+    logService.error(`Failed to start sandbox-accessible browser bridge: ${String(err)}`);
+    return null;
+  }
+}
+
+export async function stopSandboxAccessibleBrowserBridge(): Promise<void> {
+  if (sandboxBridgeServer) {
+    try {
+      await (
+        await import("./bridge-server.js")
+      ).stopBrowserBridgeServer(sandboxBridgeServer.server);
+    } catch {
+      // ignore
+    }
+    sandboxBridgeServer = null;
   }
 }
