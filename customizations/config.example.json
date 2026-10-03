@@ -1,0 +1,58 @@
+{
+  "agents": {
+    "defaults": {
+      "sandbox": {
+        "mode": "all",
+        "scope": "shared",
+        "workspaceAccess": "rw",
+        "docker": {
+          "image": "openclaw-sandbox:bookworm-slim",
+          "env": {
+            "AUTH_TOKEN": "SET_LOCALLY",
+            "CT0": "SET_LOCALLY",
+            "GOOGLE_PLACES_API_KEY": "SET_LOCALLY",
+            "GEMINI_API_KEY": "SET_LOCALLY",
+            "NOTION_API_KEY": "SET_LOCALLY",
+            "OPENAI_API_KEY": "SET_LOCALLY"
+          }
+        },
+        "browser": {
+          "enabled": false,
+          "allowHostControl": true
+        }
+      }
+    }
+  },
+  "tools": {
+    "codeMode": false,
+    "toolSearch": false
+  },
+  "skills": {
+    "workshop": {
+      "autonomous": {
+        "mode": "off"
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "local-backoffice": {
+        "enabled": true
+      },
+      "memory-core": {
+        "config": {
+          "dreaming": {
+            "enabled": false
+          }
+        }
+      }
+    }
+  },
+  "memory": {
+    "search": {
+      "remote": {
+        "apiKey": "SET_LOCALLY"
+      }
+    }
+  }
+}

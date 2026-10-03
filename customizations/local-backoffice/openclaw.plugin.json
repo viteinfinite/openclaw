@@ -1,0 +1,21 @@
+{
+  "id": "local-backoffice",
+  "name": "Local Backoffice commands",
+  "description": "Local X thread conversion and compatibility aliases, independent of OpenClaw core.",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "commandAliases": [
+    {
+      "name": "x-to-backoffice"
+    },
+    {
+      "name": "x-t-backoffice"
+    }
+  ]
+}

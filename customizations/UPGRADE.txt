@@ -1,0 +1,111 @@
+OpenClaw local customization maintenance
+=====================================
+
+Baseline: official OpenClaw 2026.9.8, release commit
+fc23bc864e4553c2d215e479eeec47b67a0bf943.
+
+The running CLI and managed gateway use the official npm package. This source
+checkout records the matching upstream release and the independent files in
+customizations/. Keep future local changes in this directory. Upgrade the
+installed package with OpenClaw's supported updater.
+
+Files
+-----
+customizations/local-backoffice/: the linked command plugin. It registers
+/x-to-backoffice and /x-t-backoffice, fetches the thread with the workspace's
+maintained Virb client, and returns a Backoffice creation URL. It executes the
+client directly and returns generic errors to avoid exposing cookie values.
+
+customizations/skills/virb/: the existing maintained client and local runner,
+including the earlier GraphQL partial-error fix. Its runtime dependencies are
+not committed. The installed workspace retains its working dependencies.
+
+customizations/skills/x-to-backoffice/: the workspace skill and conversion
+script, updated to use the sibling Virb runner.
+
+customizations/sandbox/: the preserved local sandbox Docker definitions and
+the browser entrypoint used by the optional browser image. Build these with
+customizations/sandbox as the Docker context. The active sandbox uses
+openclaw-sandbox:bookworm-slim; the browser runs on the host.
+
+customizations/config.example.json: a configuration fragment illustrating the
+compatibility settings. Credential values are placeholders. Apply selected
+settings to the existing configuration; do not replace it with this fragment.
+
+Local installation
+------------------
+The running plugin is installed independently in:
+  $HOME/.local/share/openclaw-customizations/local-backoffice
+The skills are in the configured agent workspace's skills directory.
+
+To deploy an updated plugin, copy its three files into that local plugin
+directory, then use the supported registration command:
+  openclaw plugins install --link "$HOME/.local/share/openclaw-customizations/local-backoffice" --force
+Restart through the gateway's existing service owner after deployment.
+
+Deploy skill updates to the corresponding workspace skill directories while
+retaining their runtime dependencies and unrelated workspace state.
+
+For a fresh Virb installation, copy its skill directory into the workspace and
+install the registry runtime dependencies with npm from its package directory:
+  npm install --omit=dev --ignore-scripts --package-lock=false
+The preserved package metadata includes historical development scripts and a
+pnpm patch reference whose patch is not shipped. Use npm for this compiled
+client; the historical pnpm development setup is not an installation route.
+The command plugin and configured sandbox supply AUTH_TOKEN and CT0 directly.
+Existing working skill installations do not need a dependency reinstall.
+
+The local Docker definitions are also installed under:
+  $HOME/.local/share/openclaw-customizations
+The optional browser Dockerfile requires its scripts/ directory in its build
+context; use the complete customizations/sandbox directory from this checkout.
+
+Compatibility configuration
+---------------------------
+Sandbox skill credentials are supplied explicitly through
+agents.defaults.sandbox.docker.env. Keep their actual values in private local
+configuration. The model uses the original google:default auth profile via:
+  openclaw models auth order set --agent main --provider google google:default
+The imported google:models-json profile is retained and excluded from that
+order. The primary model remains google/gemini-3.1-flash-lite.
+
+tools.codeMode=false and tools.toolSearch=false preserve direct tool access
+with this model. Autonomous Skill Workshop is off and Memory Dreaming is
+disabled. Memory search uses the existing OpenAI credential via
+memory.search.remote.apiKey. Empty heartbeat instructions still skip runs.
+
+28 unchanged copied bundled skills were retired to the private recovery
+backup; current bundled skills are supplied by the official npm package.
+Custom and retired skills with local changes remain in the workspace.
+
+Completed upgrade
+-----------------
+The supported Doctor bridge migrated 2026.3.2-beta.1 through 2026.9.5 to
+2026.9.8, retaining local state, history, credentials, pairings, and cron jobs.
+Telegram, the scheduled scanner, existing deduplication, sandbox execution,
+Virb fetching, both Backoffice commands, and host browser access were verified
+during the upgrade. The shared and agent SQLite databases passed quick checks.
+
+Recovery
+--------
+The private backup is under:
+  $HOME/.openclaw-upgrade-backups/20261003T145631Z
+It includes the verified pre-upgrade state, original gateway definition,
+original runtime and dependencies, and rollback.py. Its recovery runtime is
+independent of this working checkout, so switching branches does not break
+rollback. The original patched branch is retained as sandbox-combined-rebased.
+
+To roll back under the same local user:
+  python3 "$HOME/.openclaw-upgrade-backups/20261003T145631Z/rollback.py" --restore
+This retains the newer state separately before restoring the old service.
+
+Future upgrades
+---------------
+  openclaw backup create
+  openclaw update
+  openclaw gateway status
+  openclaw channels status --probe
+
+For the source checkout, fetch the selected official release and merge that
+tag into main. Keep the customization commit separate from upstream core;
+no old core patches need to be rebased.
